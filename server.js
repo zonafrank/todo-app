@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const buildHtmlTemplate = require("./template");
+const sanitizeHTML = require("sanitize-html");
 
 const app = express();
 const dbName = "todo-app";
@@ -28,6 +29,18 @@ async function main() {
 const todoSchema = new mongoose.Schema({ text: String });
 const Todo = mongoose.model("Todo", todoSchema);
 
+function passwordProtected(req, res, next) {
+  res.set("www-Authenticate", "Basic realm='Simple Todo App'");
+  console.log(req.headers.authorization);
+  if (req.headers.authorization === "Basic bGVhcm46amF2YXNjcmlwdA==") {
+    next();
+  } else {
+    res.status(401).send("Authentication required");
+  }
+}
+
+app.use(passwordProtected);
+
 app.get("/", async (req, res) => {
   const todos = await Todo.find({});
   const markup = buildHtmlTemplate(todos);
@@ -36,7 +49,11 @@ app.get("/", async (req, res) => {
 
 app.post("/create-item", async (req, res) => {
   try {
-    const todo = new Todo({ text: req.body.text });
+    const safeText = sanitizeHTML(req.body.text, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+    const todo = new Todo({ text: safeText });
     const dbResponse = await todo.save();
     res.json(dbResponse);
   } catch (error) {
@@ -45,11 +62,16 @@ app.post("/create-item", async (req, res) => {
 });
 
 app.post("/update-item", async (req, res) => {
-  console.log("from update route");
   const { id, text } = req.body;
+
+  const safeText = sanitizeHTML(text, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
   const uppdatedTodo = await Todo.findByIdAndUpdate(
     id,
-    { text },
+    { safeText },
     { new: true }
   );
   res.json({ success: true });
