@@ -31,7 +31,6 @@ const Todo = mongoose.model("Todo", todoSchema);
 
 function passwordProtected(req, res, next) {
   res.set("www-Authenticate", "Basic realm='Simple Todo App'");
-  console.log(req.headers.authorization);
   if (req.headers.authorization === "Basic bGVhcm46amF2YXNjcmlwdA==") {
     next();
   } else {
@@ -69,11 +68,12 @@ app.post("/update-item", async (req, res) => {
     allowedAttributes: {},
   });
 
-  const uppdatedTodo = await Todo.findByIdAndUpdate(
+  const updatedTodo = await Todo.findByIdAndUpdate(
     id,
-    { safeText },
+    { text: safeText },
     { new: true }
   );
+
   res.json({ success: true });
 });
 
